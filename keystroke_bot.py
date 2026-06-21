@@ -6,6 +6,9 @@ import os
 TOKEN    = os.environ["DISCORD_TOKEN"]
 GUILD_ID = int(os.environ["GUILD_ID"])
 
+# Channel the bot posts its action log to (create it under a bots/logs category).
+LOG_CHANNEL_NAME = "keysbot"
+
 # ── Role IDs ──────────────────────────────────────────────────────────────────
 ROLES = {
     "💻": int(os.environ["ROLE_TECH"]),
@@ -45,7 +48,8 @@ intents = discord.Intents.default()
 intents.members = True  # requires Server Members Intent in Dev Portal
 
 client = discord.Client(intents=intents)
-tracked = {}  # message_id (int) -> {emoji: role_id}
+tracked = {}      # message_id (int) -> {emoji: role_id}
+log_channel = None  # resolved in on_ready; None if the log channel doesn't exist
 
 
 def load_state():
@@ -60,10 +64,25 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 
+async def log_action(text):
+    """Post a log line to the #keysbot channel (best-effort) and to stdout."""
+    print(text)
+    if log_channel is not None:
+        try:
+            await log_channel.send(text)
+        except discord.DiscordException as e:
+            print(f"  ! no se pudo escribir en #{LOG_CHANNEL_NAME}: {e}")
+
+
 @client.event
 async def on_ready():
+    global log_channel
     print(f"✓ Conectado como {client.user}")
     guild = client.get_guild(GUILD_ID)
+
+    log_channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL_NAME)
+    if log_channel is None:
+        print(f"  ! Canal de logs '#{LOG_CHANNEL_NAME}' no encontrado — solo stdout")
 
     channel = discord.utils.get(guild.text_channels, name="elige-tu-rol")
     if not channel:
@@ -93,7 +112,7 @@ async def on_ready():
 
         tracked[msg.id] = {e: ROLES[e] for e in msg_def["emojis"]}
 
-    print("✓ Bot listo — escuchando reacciones\n")
+    await log_action(f"🟢 **{client.user}** conectado — escuchando reacciones en {len(tracked)} mensaje(s)")
 
 
 async def apply_reaction(payload, add: bool):
@@ -118,10 +137,10 @@ async def apply_reaction(payload, add: bool):
 
     if add:
         await member.add_roles(role, reason="Reaction role")
-        print(f"  + {member.display_name} → {role.name}")
+        await log_action(f"✅ {member.display_name} → **{role.name}**")
     else:
         await member.remove_roles(role, reason="Reaction role")
-        print(f"  - {member.display_name} ← {role.name}")
+        await log_action(f"➖ {member.display_name} ← **{role.name}**")
 
 
 @client.event
