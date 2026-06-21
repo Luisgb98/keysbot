@@ -2,3 +2,6 @@
 bot_state.json
 __pycache__/
 *.pyc
+
+# Local-only ad-hoc scripts — never uploaded to git
+local/
