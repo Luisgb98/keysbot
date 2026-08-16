@@ -8,12 +8,12 @@ compatibility_date = "2025-01-01"
 
 [vars]
 # Server the buttons are allowed to be clicked in.
-GUILD_ID = ""
+GUILD_ID = "1510366682122813531"
 # Comma-separated allowlist of role IDs the buttons may toggle.
 # Order: Tech, Gaming, Anime, Path of Exile, Diablo.
-ALLOWED_ROLE_IDS = ""
+ALLOWED_ROLE_IDS = "1516186329229033593,1516186345775566949,1516186552529846302,1518040287740428509,1518040218182225980"
 # Channel ID for #keysbot log lines. Leave empty to disable logging.
-LOG_CHANNEL_ID = ""
+LOG_CHANNEL_ID = "1518221001467367454"
 
 [observability]
 enabled = true
