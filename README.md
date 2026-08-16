@@ -21,7 +21,6 @@ one that copies role permissions.
 | `post_messages.py`    | One-shot script: posts (or edits) the two button messages.                  |
 | `setup_channels.py`   | One-shot script: creates POE/Diablo categories + channels, locked to roles. |
 | `fetch_roles.py`      | One-shot script: copies the "Tech" role's permissions onto other roles.     |
-| `keystroke_bot.py`    | **Legacy** reaction-role gateway bot, kept as a fallback. See below.        |
 | `.env.example`        | Template for the configuration. Copy to `.env` and fill in.                 |
 
 ## How it works
@@ -117,16 +116,6 @@ Then delete `#keysbot-test`.
 
 (For the other admin scripts, run `python setup_channels.py` or
 `python fetch_roles.py` the same way — once each, then you're done with them.)
-
-## Legacy reaction bot
-
-`keystroke_bot.py` is the previous implementation: a discord.py gateway process
-that watched emoji reactions and needed a host running 24/7 (`requirements.txt`
-still carries `discord.py` for it). It's kept as a fallback until the buttons
-are proven in production.
-
-> **Don't run it at the same time as the Worker** — a member acting on both a
-> reaction and a button would toggle the role twice.
 
 ## Configuration reference
 
