@@ -1,0 +1,19 @@
+name = "keysbot"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Secrets (set with `npx wrangler secret put <NAME>`, never committed):
+#   DISCORD_TOKEN       — bot token from the Developer Portal
+#   DISCORD_PUBLIC_KEY  — app's Public Key (General Information tab)
+
+[vars]
+# Server the buttons are allowed to be clicked in.
+GUILD_ID = ""
+# Comma-separated allowlist of role IDs the buttons may toggle.
+# Order: Tech, Gaming, Anime, Path of Exile, Diablo.
+ALLOWED_ROLE_IDS = ""
+# Channel ID for #keysbot log lines. Leave empty to disable logging.
+LOG_CHANNEL_ID = ""
+
+[observability]
+enabled = true

@@ -1,0 +1,15 @@
+{
+  "name": "keysbot-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord button-role interactions endpoint on Cloudflare Workers",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
