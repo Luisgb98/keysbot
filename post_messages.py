@@ -1,0 +1,222 @@
+"""One-shot script: publish the two role messages as button messages.
+
+Replaces the posting logic that used to live in keystroke_bot.py's on_ready.
+Run it once (like setup_channels.py) — the actual role toggling is handled by
+the Cloudflare Worker in worker/, which receives button clicks as webhooks.
+
+    python post_messages.py --test    # post to a private #keysbot-test channel
+    python post_messages.py           # post to #elige-tu-rol
+
+Message IDs are cached in bot_state.json, so re-running edits the existing
+messages in place instead of posting duplicates.
+"""
+
+import argparse
+import json
+import os
+import sys
+
+import requests
+
+TOKEN = os.environ["DISCORD_TOKEN"]
+GUILD_ID = os.environ["GUILD_ID"]
+
+API = "https://discord.com/api/v10"
+HEADERS = {
+    "Authorization": f"Bot {TOKEN}",
+    "User-Agent": "DiscordBot (https://github.com/discord/discord-api-docs, 10)",
+    "Content-Type": "application/json",
+}
+
+LIVE_CHANNEL = "elige-tu-rol"
+TEST_CHANNEL = "keysbot-test"
+
+VIEW_CHANNEL = 1024
+SEND_MESSAGES = 2048
+
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_state.json")
+
+# ── Role IDs ──────────────────────────────────────────────────────────────────
+ROLES = {
+    "tech": os.environ["ROLE_TECH"],
+    "gaming": os.environ["ROLE_GAMING"],
+    "anime": os.environ["ROLE_ANIME"],
+    "poe": os.environ["ROLE_POE"],
+    "diablo": os.environ["ROLE_DIABLO"],
+}
+
+# ── Messages to post ──────────────────────────────────────────────────────────
+# Each button's custom_id is "role:<ROLE_ID>" — the worker parses that, checks it
+# against ALLOWED_ROLE_IDS, and toggles the role.
+FOOTER = "*Pulsa un botón para obtener el rol. Púlsalo de nuevo para quitarlo.*"
+
+MESSAGES = {
+    "msg1": {
+        "text": (
+            "🎭 **Elige tu comunidad de interés**\n\n"
+            "💻 ─ **Tech** · Tecnología y programación\n"
+            "🎮 ─ **Gaming** · Videojuegos en general\n"
+            "🎌 ─ **Anime** · Series y manga\n\n"
+            f"{FOOTER}"
+        ),
+        "buttons": [
+            ("💻", "Tech", "tech"),
+            ("🎮", "Gaming", "gaming"),
+            ("🎌", "Anime", "anime"),
+        ],
+    },
+    "msg2": {
+        "text": (
+            "⚔️ **Elige tu juego**\n\n"
+            "⚡ ─ **Path of Exile** · Accede a los canales de POE\n"
+            "🔥 ─ **Diablo** · Accede a los canales de Diablo\n\n"
+            f"{FOOTER}"
+        ),
+        "buttons": [
+            ("⚡", "Path of Exile", "poe"),
+            ("🔥", "Diablo", "diablo"),
+        ],
+    },
+}
+
+
+def api(method, path, body=None):
+    """Returns (payload, error_string). Mirrors the helper in setup_channels.py."""
+    res = requests.request(method, API + path, headers=HEADERS, json=body, timeout=30)
+    if not res.ok:
+        return None, f"HTTP {res.status_code}: {res.text}"
+    if res.status_code == 204 or not res.content:
+        return {}, None
+    return res.json(), None
+
+
+def load_state():
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def save_state(state):
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+
+def components_for(msg_def):
+    """One action row holding this message's buttons (max 5 per row — we have 3)."""
+    return [
+        {
+            "type": 1,
+            "components": [
+                {
+                    "type": 2,          # button
+                    "style": 2,         # secondary (grey)
+                    "label": label,
+                    "emoji": {"name": emoji},
+                    "custom_id": f"role:{ROLES[role_key]}",
+                }
+                for emoji, label, role_key in msg_def["buttons"]
+            ],
+        }
+    ]
+
+
+def find_channel(name):
+    channels, err = api("GET", f"/guilds/{GUILD_ID}/channels")
+    if err:
+        sys.exit(f"✗ No se pudieron listar los canales: {err}")
+    return next((c for c in channels if c["type"] == 0 and c["name"] == name), None)
+
+
+def ensure_test_channel():
+    """Create (or reuse) #keysbot-test, visible only to the server owner and the bot."""
+    existing = find_channel(TEST_CHANNEL)
+    if existing:
+        print(f"  ↩ Canal #{TEST_CHANNEL} ya existe (ID: {existing['id']})")
+        return existing
+
+    guild, err = api("GET", f"/guilds/{GUILD_ID}")
+    if err:
+        sys.exit(f"✗ No se pudo leer el servidor: {err}")
+    owner_id = guild["owner_id"]
+
+    me, err = api("GET", "/users/@me")
+    if err:
+        sys.exit(f"✗ No se pudo leer la identidad del bot: {err}")
+
+    allow = str(VIEW_CHANNEL | SEND_MESSAGES)
+    overwrites = [
+        {"id": GUILD_ID, "type": 0, "allow": "0", "deny": str(VIEW_CHANNEL)},  # @everyone
+        {"id": owner_id, "type": 1, "allow": allow, "deny": "0"},              # dueño
+        {"id": me["id"], "type": 1, "allow": allow, "deny": "0"},              # el bot
+    ]
+
+    channel, err = api("POST", f"/guilds/{GUILD_ID}/channels", {
+        "name": TEST_CHANNEL,
+        "type": 0,
+        "topic": "Canal de pruebas de keysbot — solo visible para el dueño y el bot.",
+        "permission_overwrites": overwrites,
+    })
+    if err:
+        sys.exit(f"✗ No se pudo crear #{TEST_CHANNEL}: {err}")
+
+    print(f"  ✓ Canal #{TEST_CHANNEL} creado (ID: {channel['id']}) — visible solo para el dueño")
+    return channel
+
+
+def publish(channel_id, state, key, msg_def):
+    """Edit the saved message if it still exists, otherwise post a new one."""
+    payload = {"content": msg_def["text"], "components": components_for(msg_def)}
+    saved_id = state.get(key)
+
+    if saved_id:
+        _, err = api("GET", f"/channels/{channel_id}/messages/{saved_id}")
+        if err is None:
+            _, err = api("PATCH", f"/channels/{channel_id}/messages/{saved_id}", payload)
+            if err:
+                sys.exit(f"✗ No se pudo editar '{key}': {err}")
+            print(f"  ↩ Mensaje '{key}' actualizado (ID: {saved_id})")
+            # An edited message may still carry reactions from the old bot —
+            # clear them so nobody clicks an emoji that no longer does anything.
+            api("DELETE", f"/channels/{channel_id}/messages/{saved_id}/reactions")
+            return
+        print(f"  ! Mensaje '{key}' guardado ya no existe, se publicará de nuevo")
+
+    msg, err = api("POST", f"/channels/{channel_id}/messages", payload)
+    if err:
+        sys.exit(f"✗ No se pudo publicar '{key}': {err}")
+
+    state[key] = msg["id"]
+    save_state(state)
+    print(f"  ✓ Mensaje '{key}' publicado (ID: {msg['id']})")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help=f"publicar en #{TEST_CHANNEL} (privado, solo dueño + bot) en vez de #{LIVE_CHANNEL}",
+    )
+    args = parser.parse_args()
+
+    if args.test:
+        channel = ensure_test_channel()
+        prefix = "test_"
+    else:
+        channel = find_channel(LIVE_CHANNEL)
+        if not channel:
+            sys.exit(f"✗ Canal '#{LIVE_CHANNEL}' no encontrado. Créalo primero.")
+        print(f"  → Publicando en #{LIVE_CHANNEL} (ID: {channel['id']})")
+        prefix = ""
+
+    state = load_state()
+    for key, msg_def in MESSAGES.items():
+        publish(channel["id"], state, prefix + key, msg_def)
+
+    print("\nListo. Recuerda que el worker debe tener estos IDs en ALLOWED_ROLE_IDS:")
+    print("  " + ",".join(ROLES.values()))
+
+
+if __name__ == "__main__":
+    main()
