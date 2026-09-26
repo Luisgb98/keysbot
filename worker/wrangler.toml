@@ -25,7 +25,7 @@ LOG_CHANNEL_ID = "1518221001467367454"
 LIVE_CHANNEL_ID = "1553451147056914514"
 ROLE_TWITCH_ID = "1553450989959380992"
 # Twitch user ID of the channel (subscribe_twitch.py prints it).
-TWITCH_BROADCASTER_ID = ""
+TWITCH_BROADCASTER_ID = "36844469"
 # A stream.online inside this many minutes of the last announcement is a
 # reconnect, not a new stream.
 LIVE_COOLDOWN_MINUTES = "120"
