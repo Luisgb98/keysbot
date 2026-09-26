@@ -1,4 +1,4 @@
-"""One-shot script: publish the two role messages as button messages.
+"""One-shot script: publish the role messages as button messages.
 
 Replaces the posting logic that used to live in keystroke_bot.py's on_ready.
 Run it once (like setup_channels.py) — the actual role toggling is handled by
@@ -14,6 +14,7 @@ messages in place instead of posting duplicates.
 import argparse
 import json
 import os
+import re
 import sys
 
 import requests
@@ -45,6 +46,8 @@ ROLES = {
     "diablo": os.environ["ROLE_DIABLO"],
     "aion2": os.environ["ROLE_AION2"],
     "wow": os.environ["ROLE_WOW"],
+    "twitch": os.environ["ROLE_TWITCH"],
+    "videos": os.environ["ROLE_VIDEOS"],
 }
 
 # ── Messages to post ──────────────────────────────────────────────────────────
@@ -52,6 +55,7 @@ ROLES = {
 # against ALLOWED_ROLE_IDS, and toggles the role.
 # ":name:" refers to one of the app's own emojis (uploaded by upload_emojis.py),
 # both in the text and on the buttons; anything else is a plain Unicode emoji.
+# "#name" in the text becomes a clickable mention of that text channel.
 FOOTER = "*Pulsa un botón para obtener el rol. Púlsalo de nuevo para quitarlo.*"
 
 MESSAGES = {
@@ -83,6 +87,19 @@ MESSAGES = {
             (":diablo:", "Diablo", "diablo"),
             (":aion2:", "AION 2", "aion2"),
             (":wowforever:", "WoW Forever", "wow"),
+        ],
+    },
+    "msg3": {
+        "text": (
+            "🔔 **Notificaciones**\n\n"
+            ":twitch: ─ **Twitch** · Te aviso en #directos cuando empiece directo\n"
+            ":youtube: ─ **Vídeos** · Te aviso en #videos de cada vídeo nuevo "
+            "en :youtube: YouTube, :tiktok: TikTok e :instagram: Instagram\n\n"
+            f"{FOOTER}"
+        ),
+        "buttons": [
+            (":twitch:", "Twitch", "twitch"),
+            (":youtube:", "Vídeos", "videos"),
         ],
     },
 }
@@ -137,10 +154,14 @@ def button_emoji(emoji, app_emojis):
     return {"id": app_emojis[name], "name": name}
 
 
-def render_text(text, app_emojis):
+def render_text(text, app_emojis, channel_ids):
     for name, emoji_id in app_emojis.items():
         text = text.replace(f":{name}:", f"<:{name}:{emoji_id}>")
-    return text
+    return re.sub(
+        r"#([a-z0-9-]+)",
+        lambda m: f"<#{channel_ids[m[1]]}>" if m[1] in channel_ids else m[0],
+        text,
+    )
 
 
 def components_for(msg_def, app_emojis):
@@ -162,11 +183,22 @@ def components_for(msg_def, app_emojis):
     ]
 
 
-def find_channel(name):
+def text_channels():
     channels, err = api("GET", f"/guilds/{GUILD_ID}/channels")
     if err:
         sys.exit(f"✗ No se pudieron listar los canales: {err}")
-    return next((c for c in channels if c["type"] == 0 and c["name"] == name), None)
+    return [c for c in channels if c["type"] == 0]
+
+
+def find_channel(name):
+    return next((c for c in text_channels() if c["name"] == name), None)
+
+
+def channel_ids_by_name():
+    """name → id for text channels whose name is unique ("general" isn't)."""
+    channels = text_channels()
+    names = [c["name"] for c in channels]
+    return {c["name"]: c["id"] for c in channels if names.count(c["name"]) == 1}
 
 
 def ensure_test_channel():
@@ -205,10 +237,10 @@ def ensure_test_channel():
     return channel
 
 
-def publish(channel_id, state, key, msg_def, app_emojis):
+def publish(channel_id, state, key, msg_def, app_emojis, channel_ids):
     """Edit the saved message if it still exists, otherwise post a new one."""
     payload = {
-        "content": render_text(msg_def["text"], app_emojis),
+        "content": render_text(msg_def["text"], app_emojis, channel_ids),
         "components": components_for(msg_def, app_emojis),
     }
     saved_id = state.get(key)
@@ -255,9 +287,10 @@ def main():
         prefix = ""
 
     app_emojis = load_app_emojis()
+    channel_ids = channel_ids_by_name()
     state = load_state()
     for key, msg_def in MESSAGES.items():
-        publish(channel["id"], state, prefix + key, msg_def, app_emojis)
+        publish(channel["id"], state, prefix + key, msg_def, app_emojis, channel_ids)
 
     print("\nListo. Recuerda que el worker debe tener estos IDs en ALLOWED_ROLE_IDS:")
     print("  " + ",".join(ROLES.values()))

@@ -3,17 +3,35 @@ main = "src/index.js"
 compatibility_date = "2026-08-01"
 
 # Secrets (set with `npx wrangler secret put <NAME>`, never committed):
-#   DISCORD_TOKEN       — bot token from the Developer Portal
-#   DISCORD_PUBLIC_KEY  — app's Public Key (General Information tab)
+#   DISCORD_TOKEN          — bot token from the Developer Portal
+#   DISCORD_PUBLIC_KEY     — app's Public Key (General Information tab)
+#   TWITCH_CLIENT_ID       — Twitch app (dev.twitch.tv), same as keystroke.es uses
+#   TWITCH_CLIENT_SECRET   — its secret
+#   TWITCH_EVENTSUB_SECRET — signs Twitch's webhooks; the one subscribe_twitch.py used
+#   VIDEOS_HMAC_SECRET     — signs keystroke-hub's POST /videos; shared with the hub
 
 [vars]
 # Server the buttons are allowed to be clicked in.
 GUILD_ID = "1510366682122813531"
 # Comma-separated allowlist of role IDs the buttons may toggle.
-# Order: Tech, Gaming, Anime, Path of Exile, Diablo, AION 2, WoW Forever.
-ALLOWED_ROLE_IDS = "1516186329229033593,1516186345775566949,1516186552529846302,1518040287740428509,1518040218182225980,1553353827233562765,1553353828684931112"
+# Order: Tech, Gaming, Anime, Path of Exile, Diablo, AION 2, WoW Forever,
+# Twitch, Vídeos.
+ALLOWED_ROLE_IDS = "1516186329229033593,1516186345775566949,1516186552529846302,1518040287740428509,1518040218182225980,1553353827233562765,1553353828684931112,1553450989959380992,1553450991322665212"
 # Channel ID for #keysbot log lines. Leave empty to disable logging.
 LOG_CHANNEL_ID = "1518221001467367454"
+
+# ── Announcements ──
+# #directos: Twitch going live, pinging the Twitch role.
+LIVE_CHANNEL_ID = "1553451147056914514"
+ROLE_TWITCH_ID = "1553450989959380992"
+# Twitch user ID of the channel (subscribe_twitch.py prints it).
+TWITCH_BROADCASTER_ID = ""
+# A stream.online inside this many minutes of the last announcement is a
+# reconnect, not a new stream.
+LIVE_COOLDOWN_MINUTES = "120"
+# #videos: videos published from keystroke-hub, pinging the Vídeos role.
+VIDEOS_CHANNEL_ID = "1553451150869659768"
+ROLE_VIDEOS_ID = "1553450991322665212"
 
 [observability]
 enabled = true

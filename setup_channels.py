@@ -24,6 +24,8 @@ HEADERS = {
 }
 
 VIEW = 1024  # VIEW_CHANNEL permission bit
+# Everything a member could post with: messages, threads, messages in threads
+NO_POSTING = 2048 | (1 << 35) | (1 << 36) | (1 << 38)
 
 def api(method, path, body=None):
     data = json.dumps(body).encode() if body else None
@@ -167,6 +169,15 @@ SECTIONS = [
     },
 ]
 
+# --- Announcement channels ---
+# Public and read-only: the Worker posts here, pinging the Twitch / Vídeos
+# roles. They sit in an existing category whose permissions are left alone.
+ANNOUNCE_CATEGORY = "📰 novedades"
+ANNOUNCE_CHANNELS = [
+    ("directos", "Aviso cuando Keystroke empieza directo en Twitch. Pulsa el botón Twitch en #elige-tu-rol para que te avise."),
+    ("videos", "Aviso de cada vídeo nuevo en YouTube, TikTok e Instagram. Pulsa el botón Vídeos en #elige-tu-rol para que te avise."),
+]
+
 # --- Fetch current channels ---
 print("Fetching current channels...")
 channels, err = api("GET", f"/guilds/{GUILD_ID}/channels")
@@ -212,5 +223,18 @@ for section in SECTIONS:
             create_channel(ch, cat_id, overwrites, channel_type=ch_type, extra=extra)
         else:
             print(f"  ~ {ch} ya existe, omitiendo")
+
+announce_cat = categories.get(base_name(ANNOUNCE_CATEGORY))
+if announce_cat:
+    print(f"\nCreating announcement channels in {ANNOUNCE_CATEGORY}...")
+    existing_names = {c["name"] for c in channels if c.get("parent_id") == announce_cat["id"]}
+    read_only = [{"id": EVERYONE, "type": 0, "allow": "0", "deny": str(NO_POSTING)}]
+    for ch, topic in ANNOUNCE_CHANNELS:
+        if ch not in existing_names:
+            create_channel(ch, announce_cat["id"], read_only, extra={"topic": topic})
+        else:
+            print(f"  ~ {ch} ya existe, omitiendo")
+else:
+    print(f"\n  ✗ Categoría {ANNOUNCE_CATEGORY} no encontrada, no se crean los canales de anuncios")
 
 print("\nDone!")

@@ -1,16 +1,22 @@
 /**
- * keysbot — Discord button roles on Cloudflare Workers.
+ * keysbot — Discord button roles and stream/video announcements on Cloudflare Workers.
  *
- * Discord POSTs every button click here as a signed webhook, so the whole bot
- * is one stateless HTTP handler: verify the Ed25519 signature, toggle the role,
- * answer with an ephemeral message. No gateway, no persistent process.
+ * Everything arrives as a signed HTTP webhook, so the whole bot is stateless
+ * handlers — no gateway, no persistent process:
  *
- * Config:
+ *   POST /        Discord interactions: verify the Ed25519 signature, toggle
+ *                 the role, answer with an ephemeral message.
+ *   POST /twitch  Twitch EventSub: announce going live (twitch.js).
+ *   POST /videos  keystroke-hub: announce a published video (videos.js).
+ *
+ * Config (the announcement modules list their own):
  *   secrets — DISCORD_TOKEN, DISCORD_PUBLIC_KEY
  *   vars    — GUILD_ID, ALLOWED_ROLE_IDS (comma-separated), LOG_CHANNEL_ID (optional)
  */
 
-const API = "https://discord.com/api/v10";
+import { discord, log } from "./discord.js";
+import { handleTwitch } from "./twitch.js";
+import { handleVideo } from "./videos.js";
 
 // Interaction types
 const PING = 1;
@@ -67,38 +73,6 @@ async function verifyRequest(request, publicKeyHex) {
     return null;
   }
   return ok ? body : null;
-}
-
-// ── Discord REST ──────────────────────────────────────────────────────────────
-
-async function discord(env, method, path, body) {
-  const res = await fetch(API + path, {
-    method,
-    headers: {
-      Authorization: `Bot ${env.DISCORD_TOKEN}`,
-      "Content-Type": "application/json",
-      "User-Agent": "DiscordBot (https://github.com/discord/discord-api-docs, 10)",
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`Discord ${method} ${path} → ${res.status}: ${await res.text()}`);
-  }
-  return res;
-}
-
-/** Best-effort log line to #keysbot; never fails the interaction. */
-async function log(env, text) {
-  console.log(text);
-  if (!env.LOG_CHANNEL_ID) return;
-  try {
-    await discord(env, "POST", `/channels/${env.LOG_CHANNEL_ID}/messages`, {
-      content: text,
-      allowed_mentions: { parse: [] },
-    });
-  } catch (err) {
-    console.error(`no se pudo escribir en el canal de logs: ${err.message}`);
-  }
 }
 
 // ── Responses ─────────────────────────────────────────────────────────────────
@@ -187,6 +161,11 @@ export default {
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
     }
+
+    const { pathname } = new URL(request.url);
+    if (pathname === "/twitch") return handleTwitch(request, env, ctx);
+    if (pathname === "/videos") return handleVideo(request, env);
+
     if (!env.DISCORD_PUBLIC_KEY) {
       console.error("DISCORD_PUBLIC_KEY no configurado");
       return new Response("Server misconfigured", { status: 500 });

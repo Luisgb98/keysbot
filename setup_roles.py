@@ -1,9 +1,10 @@
-"""One-shot script: create the AION 2 / WoW Forever roles.
+"""One-shot script: create the game and notification button roles.
 
     python setup_roles.py
 
 Finds each role by name and creates it only if it's missing, so it's safe to
-re-run. Both are button roles: members toggle them from #elige-tu-rol.
+re-run. All of them are button roles: members toggle them from #elige-tu-rol.
+The notification roles aren't mentionable, so only the bot can ping them.
 
 New roles get the Tech role's permissions (same thing fetch_roles.py did for
 POE/Diablo). Prints the lines to paste into .env and the new ALLOWED_ROLE_IDS.
@@ -25,10 +26,12 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# (env var, role name, colour, hoist)
+# (env var, role name, colour, mentionable)
 NEW_ROLES = [
-    ("ROLE_AION2", "AION 2", 0x4FA3E0, False),
-    ("ROLE_WOW", "WoW Forever", 0xF0B232, False),
+    ("ROLE_AION2", "AION 2", 0x4FA3E0, True),
+    ("ROLE_WOW", "WoW Forever", 0xF0B232, True),
+    ("ROLE_TWITCH", "Twitch", 0x9146FF, False),
+    ("ROLE_VIDEOS", "Vídeos", 0xFF0033, False),
 ]
 
 
@@ -53,7 +56,7 @@ def main():
 
     by_name = {r["name"]: r for r in roles}
     ids = {}
-    for env_var, name, color, hoist in NEW_ROLES:
+    for env_var, name, color, mentionable in NEW_ROLES:
         role = by_name.get(name)
         if role:
             print(f"  ↩ Rol '{name}' ya existe (ID: {role['id']})")
@@ -62,8 +65,7 @@ def main():
                 "name": name,
                 "permissions": tech["permissions"],
                 "color": color,
-                "hoist": hoist,
-                "mentionable": True,
+                "mentionable": mentionable,
             })
             if err:
                 sys.exit(f"✗ No se pudo crear '{name}': {err}")
@@ -74,8 +76,8 @@ def main():
     for env_var, role_id in ids.items():
         print(f"  {env_var}={role_id}")
 
-    print("\nY añádelos a ALLOWED_ROLE_IDS en worker/wrangler.toml:")
-    print(f"  ,{ids['ROLE_AION2']},{ids['ROLE_WOW']}")
+    print("\nALLOWED_ROLE_IDS en worker/wrangler.toml debe incluirlos:")
+    print("  ," + ",".join(ids.values()))
 
 
 if __name__ == "__main__":
