@@ -199,7 +199,7 @@ X-Keysbot-Signature: sha256=<hex HMAC-SHA256(VIDEOS_HMAC_SECRET, timestamp + "."
 ### Setting it up
 
 1. `python setup_roles.py`, `python setup_channels.py` (creates `#directos` and
-   `#videos` in `📰 novedades`), add the IDs to `worker/wrangler.toml`, then
+   `#videos` in `👋 comunidad`), add the IDs to `worker/wrangler.toml`, then
    `python post_messages.py`.
 2. Worker secrets: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`,
    `TWITCH_EVENTSUB_SECRET` and `VIDEOS_HMAC_SECRET` (`openssl rand -hex 32` for

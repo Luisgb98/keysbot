@@ -172,7 +172,7 @@ SECTIONS = [
 # --- Announcement channels ---
 # Public and read-only: the Worker posts here, pinging the Twitch / Vídeos
 # roles. They sit in an existing category whose permissions are left alone.
-ANNOUNCE_CATEGORY = "📰 novedades"
+ANNOUNCE_CATEGORY = "👋 comunidad"
 ANNOUNCE_CHANNELS = [
     ("directos", "Aviso cuando Keystroke empieza directo en Twitch. Pulsa el botón Twitch en #elige-tu-rol para que te avise."),
     ("videos", "Aviso de cada vídeo nuevo en YouTube, TikTok e Instagram. Pulsa el botón Vídeos en #elige-tu-rol para que te avise."),
