@@ -43,11 +43,15 @@ ROLES = {
     "anime": os.environ["ROLE_ANIME"],
     "poe": os.environ["ROLE_POE"],
     "diablo": os.environ["ROLE_DIABLO"],
+    "aion2": os.environ["ROLE_AION2"],
+    "wow": os.environ["ROLE_WOW"],
 }
 
 # ── Messages to post ──────────────────────────────────────────────────────────
 # Each button's custom_id is "role:<ROLE_ID>" — the worker parses that, checks it
 # against ALLOWED_ROLE_IDS, and toggles the role.
+# ":name:" refers to one of the app's own emojis (uploaded by upload_emojis.py),
+# both in the text and on the buttons; anything else is a plain Unicode emoji.
 FOOTER = "*Pulsa un botón para obtener el rol. Púlsalo de nuevo para quitarlo.*"
 
 MESSAGES = {
@@ -68,13 +72,17 @@ MESSAGES = {
     "msg2": {
         "text": (
             "⚔️ **Elige tu juego**\n\n"
-            "⚡ ─ **Path of Exile** · Accede a los canales de POE\n"
-            "🔥 ─ **Diablo** · Accede a los canales de Diablo\n\n"
+            ":poe: ─ **Path of Exile** · Accede a los canales de POE\n"
+            ":diablo: ─ **Diablo** · Accede a los canales de Diablo\n"
+            ":aion2: ─ **AION 2** · Accede a los canales de AION 2\n"
+            ":wowforever: ─ **WoW Forever** · Accede a los canales de WoW Forever\n\n"
             f"{FOOTER}"
         ),
         "buttons": [
-            ("⚡", "Path of Exile", "poe"),
-            ("🔥", "Diablo", "diablo"),
+            (":poe:", "Path of Exile", "poe"),
+            (":diablo:", "Diablo", "diablo"),
+            (":aion2:", "AION 2", "aion2"),
+            (":wowforever:", "WoW Forever", "wow"),
         ],
     },
 }
@@ -102,8 +110,41 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 
-def components_for(msg_def):
-    """One action row holding this message's buttons (max 5 per row — we have 3)."""
+def load_app_emojis():
+    """name → id of the application's own emojis."""
+    app, err = api("GET", "/applications/@me")
+    if err:
+        sys.exit(f"✗ No se pudo leer la aplicación: {err}")
+    emojis, err = api("GET", f"/applications/{app['id']}/emojis")
+    if err:
+        sys.exit(f"✗ No se pudieron listar los emojis de la app: {err}")
+    return {e["name"]: e["id"] for e in emojis["items"]}
+
+
+def custom_name(emoji):
+    """':poe:' → 'poe'; None for a Unicode emoji."""
+    if len(emoji) > 2 and emoji.startswith(":") and emoji.endswith(":"):
+        return emoji[1:-1]
+    return None
+
+
+def button_emoji(emoji, app_emojis):
+    name = custom_name(emoji)
+    if name is None:
+        return {"name": emoji}
+    if name not in app_emojis:
+        sys.exit(f"✗ El emoji '{name}' no está en la app. Ejecuta upload_emojis.py primero.")
+    return {"id": app_emojis[name], "name": name}
+
+
+def render_text(text, app_emojis):
+    for name, emoji_id in app_emojis.items():
+        text = text.replace(f":{name}:", f"<:{name}:{emoji_id}>")
+    return text
+
+
+def components_for(msg_def, app_emojis):
+    """One action row holding this message's buttons (max 5 per row — we have at most 4)."""
     return [
         {
             "type": 1,
@@ -112,7 +153,7 @@ def components_for(msg_def):
                     "type": 2,          # button
                     "style": 2,         # secondary (grey)
                     "label": label,
-                    "emoji": {"name": emoji},
+                    "emoji": button_emoji(emoji, app_emojis),
                     "custom_id": f"role:{ROLES[role_key]}",
                 }
                 for emoji, label, role_key in msg_def["buttons"]
@@ -164,9 +205,12 @@ def ensure_test_channel():
     return channel
 
 
-def publish(channel_id, state, key, msg_def):
+def publish(channel_id, state, key, msg_def, app_emojis):
     """Edit the saved message if it still exists, otherwise post a new one."""
-    payload = {"content": msg_def["text"], "components": components_for(msg_def)}
+    payload = {
+        "content": render_text(msg_def["text"], app_emojis),
+        "components": components_for(msg_def, app_emojis),
+    }
     saved_id = state.get(key)
 
     if saved_id:
@@ -210,9 +254,10 @@ def main():
         print(f"  → Publicando en #{LIVE_CHANNEL} (ID: {channel['id']})")
         prefix = ""
 
+    app_emojis = load_app_emojis()
     state = load_state()
     for key, msg_def in MESSAGES.items():
-        publish(channel["id"], state, prefix + key, msg_def)
+        publish(channel["id"], state, prefix + key, msg_def, app_emojis)
 
     print("\nListo. Recuerda que el worker debe tener estos IDs en ALLOWED_ROLE_IDS:")
     print("  " + ",".join(ROLES.values()))

@@ -10,7 +10,8 @@ role messages, one that creates permission-restricted channel categories, and
 one that copies role permissions.
 
 > The example messages and channels are in Spanish (a gaming community: Tech,
-> Gaming, Anime, Path of Exile, Diablo), but everything is configurable.
+> Gaming, Anime, Path of Exile, Diablo, AION 2, WoW Forever), but everything is
+> configurable.
 
 ## What's in here
 
@@ -19,7 +20,9 @@ one that copies role permissions.
 | `worker/src/index.js` | The bot. Verifies signatures, toggles roles on button clicks.               |
 | `worker/wrangler.toml`| Worker config: `GUILD_ID`, `ALLOWED_ROLE_IDS`, `LOG_CHANNEL_ID`.            |
 | `post_messages.py`    | One-shot script: posts (or edits) the two button messages.                  |
-| `setup_channels.py`   | One-shot script: creates POE/Diablo categories + channels, locked to roles. |
+| `setup_roles.py`      | One-shot script: creates the AION 2 / WoW Forever button roles.             |
+| `upload_emojis.py`    | One-shot script: uploads `local/emojis/*.png` as app + server emojis.       |
+| `setup_channels.py`   | One-shot script: creates each game's category + channels, locked to roles.  |
 | `fetch_roles.py`      | One-shot script: copies the "Tech" role's permissions onto other roles.     |
 | `.env.example`        | Template for the configuration. Copy to `.env` and fill in.                 |
 
@@ -116,6 +119,23 @@ Then delete `#keysbot-test`.
 
 (For the other admin scripts, run `python setup_channels.py` or
 `python fetch_roles.py` the same way — once each, then you're done with them.)
+
+### Adding a game (AION 2 / WoW Forever)
+
+Each game gets a **button role** that unlocks its category (news, general,
+guides, experiments, per-class builds…).
+
+1. `python setup_roles.py` — creates the two roles (skips any that exist) and
+   prints their IDs. Paste them into `.env`.
+2. Append both role IDs to `ALLOWED_ROLE_IDS` in `worker/wrangler.toml` and
+   `npx wrangler deploy`.
+3. Re-source `.env`, then `python setup_channels.py` — only creates what's
+   missing, existing categories just get their permissions re-applied.
+4. Drop the game's logo in `local/emojis/<name>.png` (128×128, git-ignored —
+   logos are trademarks and this repo is public), run `python upload_emojis.py`,
+   and use `:<name>:` in `MESSAGES` in `post_messages.py`.
+5. `python post_messages.py --test`, check the new buttons, then
+   `python post_messages.py` — edits the live message in place.
 
 ## Configuration reference
 
