@@ -87,7 +87,8 @@ def reaction_for(emoji_name):
 
 # --- Sections ---
 # Each category is locked to Jefe + Moderador + its own role. Channels are text
-# unless listed under "voice"; "forum" is the per-class forum (one thread per
+# unless listed under "voice" ("➕ Crear sala" is TempVoice's join-to-create
+# channel — its rooms are created in the same category); "forum" is the per-class forum (one thread per
 # class, one tag per class). POE and Diablo mirror what's live on the server.
 SECTIONS = [
     {
@@ -105,6 +106,7 @@ SECTIONS = [
         "forum": forum("poe-clases", [
             "Bruja", "Hechicera", "Guerrero", "Monje", "Mercenario", "Cazadora",
         ], "poe"),
+        "voice": ["➕ Crear sala"],
     },
     {
         "category": "🔥 Diablo",
@@ -121,6 +123,7 @@ SECTIONS = [
         "forum": forum("diablo-clases", [
             "Barbaro", "Druida", "Hechicero", "Nigromante", "Picaro", "Espiritualista",
         ], "diablo"),
+        "voice": ["➕ Crear sala"],
     },
     {
         "category": "✨ AION 2",
@@ -142,7 +145,7 @@ SECTIONS = [
             "Gladiador", "Templario", "Asesino", "Arquero",
             "Hechicero", "Invocador", "Clerigo", "Cantor",
         ], "aion2"),
-        "voice": ["Spells of Keystroke"],
+        "voice": ["➕ Crear sala", "Spells of Keystroke"],
     },
     {
         "category": "🐉 WoW Forever",
@@ -162,6 +165,7 @@ SECTIONS = [
             "Guerrero", "Paladin", "Cazador", "Picaro", "Sacerdote",
             "Chaman", "Mago", "Brujo", "Druida",
         ], "wowforever"),
+        "voice": ["➕ Crear sala"],
     },
 ]
 
