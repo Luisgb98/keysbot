@@ -150,6 +150,41 @@ test("parseVideo: short links and empty platforms", () => {
   assert.deepEqual(parseVideo({ id: "x", title: "t", links: {} }).issues, ["links: hace falta al menos un enlace"]);
 });
 
+test("videos: YouTube Shorts is announced, and share-link tracking is dropped", async () => {
+  const res = await worker.fetch(
+    await hubRequest({
+      id: "idea-2",
+      title: "AION 2: horarios del lanzamiento",
+      links: {
+        youtube_shorts: "https://youtube.com/shorts/xyz?si=abc",
+        tiktok: "https://vm.tiktok.com/ZGdQ7bMg4/?_r=1",
+        instagram: "https://www.instagram.com/reel/DdzCtesOC0g/?stkn=ZnZo",
+      },
+    }),
+    env,
+    ctx(),
+  );
+  assert.equal(res.status, 201);
+  assert.equal(
+    posted[0].content,
+    "<:youtube:2> <@&222> **¡Nuevo vídeo!**\n**AION 2: horarios del lanzamiento**\n\n" +
+      "<:youtube:2> YouTube Shorts: https://youtube.com/shorts/xyz?si=abc\n" +
+      "<:tiktok:3> TikTok: <https://vm.tiktok.com/ZGdQ7bMg4/>\n" +
+      "Instagram: <https://www.instagram.com/reel/DdzCtesOC0g/>",
+  );
+});
+
+test("videos: a resend of an already-announced raw link is still a repeat", async () => {
+  channelHistory["901"] = [{ id: "old", content: "Instagram: https://www.instagram.com/reel/DdzCtesOC0g/?stkn=ZnZo" }];
+  const res = await worker.fetch(
+    await hubRequest({ id: "idea-2", title: "T", links: { instagram: "https://www.instagram.com/reel/DdzCtesOC0g/?stkn=ZnZo" } }),
+    env,
+    ctx(),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(posted.length, 0);
+});
+
 test("videoMessage: works without emojis", () => {
   const text = videoMessage({ roleId: "9", title: "T", links: { instagram: "https://instagram.com/p/1" }, emojis: {} });
   assert.equal(text, "<@&9> **¡Nuevo vídeo!**\n**T**\n\nInstagram: https://instagram.com/p/1");

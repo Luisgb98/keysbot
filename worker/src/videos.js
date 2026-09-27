@@ -10,7 +10,8 @@
  *   X-Keysbot-Signature: sha256=<hex HMAC-SHA256(secret, timestamp + "." + body)>
  *
  *   { "id": "<idea uuid>", "title": "…",
- *     "links": { "youtube": "https://…", "tiktok": "https://…", "instagram": "https://…" } }
+ *     "links": { "youtube": "https://…", "youtube_shorts": "https://…",
+ *                "tiktok": "https://…", "instagram": "https://…" } }
  *
  * Answers:
  *   201 { status: "announced", messageId }         — posted now
@@ -32,10 +33,13 @@ const DEDUPE_WINDOW = 50;
 const MAX_TITLE = 200;
 
 // In announcement order; the first link present gets Discord's preview.
+// `emoji` is the app emoji's name; `keepQuery` keeps YouTube's ?v=, while
+// TikTok and Instagram share links only carry tracking in theirs.
 const PLATFORMS = {
-  youtube: { label: "YouTube", hosts: ["youtube.com", "youtu.be"] },
-  tiktok: { label: "TikTok", hosts: ["tiktok.com"] },
-  instagram: { label: "Instagram", hosts: ["instagram.com"] },
+  youtube: { label: "YouTube", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
+  youtube_shorts: { label: "YouTube Shorts", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
+  tiktok: { label: "TikTok", hosts: ["tiktok.com"], emoji: "tiktok", keepQuery: false },
+  instagram: { label: "Instagram", hosts: ["instagram.com"], emoji: "instagram", keepQuery: false },
 };
 
 function json(data, status) {
@@ -94,6 +98,10 @@ export function parseVideo(payload) {
         issues.push(`links.${platform}: debe ser un enlace https de ${spec.label}`);
         continue;
       }
+      if (!spec.keepQuery) {
+        url.search = "";
+        url.hash = "";
+      }
       clean[platform] = url.toString();
     }
     if (!issues.some((i) => i.startsWith("links")) && Object.keys(clean).length === 0) {
@@ -108,13 +116,13 @@ export function parseVideo(payload) {
 export function videoMessage({ roleId, title, links, emojis }) {
   const lines = [`${emojis.youtube ? emojis.youtube + " " : ""}<@&${roleId}> **¡Nuevo vídeo!**`, `**${title}**`, ""];
   let previewed = false;
-  for (const [platform, { label }] of Object.entries(PLATFORMS)) {
+  for (const [platform, { label, emoji }] of Object.entries(PLATFORMS)) {
     const url = links[platform];
     if (!url) continue;
     // Only the first link unfurls; the rest would stack more previews.
     const shown = previewed ? `<${url}>` : url;
     previewed = true;
-    lines.push(`${emojis[platform] ? emojis[platform] + " " : ""}${label}: ${shown}`);
+    lines.push(`${emojis[emoji] ? emojis[emoji] + " " : ""}${label}: ${shown}`);
   }
   return lines.join("\n");
 }

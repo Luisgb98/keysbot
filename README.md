@@ -158,8 +158,9 @@ them. Both channels are read-only.
 reconnect and stays quiet.
 
 **Videos** — keystroke-hub, when a video is marked Published → `#videos`:
-*"@Vídeos ¡Nuevo vídeo!"* with the title and its YouTube, TikTok and Instagram
-links (the first one gets Discord's preview). Nothing is stored: before posting,
+*"@Vídeos ¡Nuevo vídeo!"* with the title and its YouTube, YouTube Shorts, TikTok
+and Instagram links (the first one gets Discord's preview; TikTok and Instagram
+links lose their tracking query). Nothing is stored: before posting,
 the Worker looks for the video's links in the last 50 messages of `#videos`, so
 a retry never posts twice.
 
@@ -176,6 +177,7 @@ X-Keysbot-Signature: sha256=<hex HMAC-SHA256(VIDEOS_HMAC_SECRET, timestamp + "."
   "title": "Build de Gladiador para AION 2",
   "links": {
     "youtube": "https://www.youtube.com/watch?v=…",
+    "youtube_shorts": "https://youtube.com/shorts/…",
     "tiktok": "https://www.tiktok.com/@…/video/…",
     "instagram": "https://www.instagram.com/reel/…"
   }
