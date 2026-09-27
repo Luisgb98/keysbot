@@ -36,10 +36,10 @@ const MAX_TITLE = 200;
 // `emoji` is the app emoji's name; `keepQuery` keeps YouTube's ?v=, while
 // TikTok and Instagram share links only carry tracking in theirs.
 const PLATFORMS = {
-  youtube: { label: "YouTube", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
-  youtube_shorts: { label: "YouTube Shorts", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
   tiktok: { label: "TikTok", hosts: ["tiktok.com"], emoji: "tiktok", keepQuery: false },
   instagram: { label: "Instagram", hosts: ["instagram.com"], emoji: "instagram", keepQuery: false },
+  youtube_shorts: { label: "YouTube Shorts", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
+  youtube: { label: "YouTube", hosts: ["youtube.com", "youtu.be"], emoji: "youtube", keepQuery: true },
 };
 
 function json(data, status) {
@@ -114,7 +114,7 @@ export function parseVideo(payload) {
 }
 
 export function videoMessage({ roleId, title, links, emojis }) {
-  const lines = [`${emojis.youtube ? emojis.youtube + " " : ""}<@&${roleId}> **¡Nuevo vídeo!**`, `**${title}**`, ""];
+  const lines = [`<@&${roleId}> **¡Nuevo vídeo!**`, `**${title}**`, ""];
   let previewed = false;
   for (const [platform, { label, emoji }] of Object.entries(PLATFORMS)) {
     const url = links[platform];

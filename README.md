@@ -158,9 +158,9 @@ them. Both channels are read-only.
 reconnect and stays quiet.
 
 **Videos** — keystroke-hub, when a video is marked Published → `#videos`:
-*"@Vídeos ¡Nuevo vídeo!"* with the title and its YouTube, YouTube Shorts, TikTok
-and Instagram links (the first one gets Discord's preview; TikTok and Instagram
-links lose their tracking query). Nothing is stored: before posting,
+*"@Vídeos ¡Nuevo vídeo!"* with the title and its links in this order: TikTok,
+Instagram, YouTube Shorts, YouTube (the first one gets Discord's preview; TikTok
+and Instagram links lose their tracking query). Nothing is stored: before posting,
 the Worker looks for the video's links in the last 50 messages of `#videos`, so
 a retry never posts twice.
 

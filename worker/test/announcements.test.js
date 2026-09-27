@@ -94,10 +94,12 @@ test("videos: announces with the role ping, the first link previewed", async () 
   const [msg] = posted;
   assert.equal(msg.channelId, "901");
   assert.deepEqual(msg.allowed_mentions, { roles: ["222"] });
-  assert.match(msg.content, /<@&222> \*\*¡Nuevo vídeo!\*\*/);
-  assert.match(msg.content, /\*\*Build de Gladiador para AION 2\*\*/);
-  assert.match(msg.content, /<:youtube:2> YouTube: https:\/\/www\.youtube\.com\/watch\?v=abc/);
-  assert.match(msg.content, /<:tiktok:3> TikTok: <https:\/\/www\.tiktok\.com\/@keystrokeg\/video\/1>/);
+  assert.equal(
+    msg.content,
+    "<@&222> **¡Nuevo vídeo!**\n**Build de Gladiador para AION 2**\n\n" +
+      "<:tiktok:3> TikTok: https://www.tiktok.com/@keystrokeg/video/1\n" +
+      "<:youtube:2> YouTube: <https://www.youtube.com/watch?v=abc>",
+  );
 });
 
 test("videos: a retry finds its link in #videos and doesn't post twice", async () => {
@@ -167,10 +169,10 @@ test("videos: YouTube Shorts is announced, and share-link tracking is dropped", 
   assert.equal(res.status, 201);
   assert.equal(
     posted[0].content,
-    "<:youtube:2> <@&222> **¡Nuevo vídeo!**\n**AION 2: horarios del lanzamiento**\n\n" +
-      "<:youtube:2> YouTube Shorts: https://youtube.com/shorts/xyz?si=abc\n" +
-      "<:tiktok:3> TikTok: <https://vm.tiktok.com/ZGdQ7bMg4/>\n" +
-      "Instagram: <https://www.instagram.com/reel/DdzCtesOC0g/>",
+    "<@&222> **¡Nuevo vídeo!**\n**AION 2: horarios del lanzamiento**\n\n" +
+      "<:tiktok:3> TikTok: https://vm.tiktok.com/ZGdQ7bMg4/\n" +
+      "Instagram: <https://www.instagram.com/reel/DdzCtesOC0g/>\n" +
+      "<:youtube:2> YouTube Shorts: <https://youtube.com/shorts/xyz?si=abc>",
   );
 });
 
